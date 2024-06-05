@@ -1,117 +1,101 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
 import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import {YaMap, Geocoder, Point, Polyline, Marker} from 'react-native-yamap';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+YaMap.init('');
+Geocoder.init('');
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+const pointA: Point = {
+  lat: 56.323505,
+  lon: 43.943473,
+};
+
+const pointB: Point = {
+  lat: 56.326438,
+  lon: 43.942907,
+};
+
+type Route = {
+  points: Array<Point>;
+  type: string;
+};
 
 function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const mapRef = React.useRef<null | any>(null);
+  const [routes, setRoutes] = React.useState<Array<Route>>([]);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  React.useEffect(() => {
+    if (pointA && pointB && mapRef.current) {
+      mapRef.current.findMasstransitRoutes([pointA, pointB], (evt: any) => {
+        const newRout: Array<Route> = [];
+
+        evt.routes[0].sections.forEach((section: any) => {
+          const sectionPoints = section.points.map((point: any) => ({
+            lat: point.lat,
+            lon: point.lon,
+          }));
+
+          newRout.push({
+            points: sectionPoints,
+            type: section.type,
+          });
+        });
+
+        setRoutes(newRout);
+      });
+    }
+  }, []);
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <>
+      <YaMap
+        ref={mapRef}
+        userLocationIcon={{
+          uri: 'https://www.clipartmax.com/png/middle/180-1801760_pin-png.png',
+        }}
+        followUser={true}
+        initialRegion={{
+          lat: 56.32372,
+          lon: 43.946138,
+          zoom: 12,
+          azimuth: 80,
+          tilt: 100,
+        }}
+        style={styles.mapStyle}>
+        {routes.map((route, index) => (
+          <View key={index}>
+            {index === 0 && (
+              <Marker
+                point={pointA}
+                source={require('./assets/images/courier.png')}
+              />
+            )}
+
+            {index === routes.length - 1 && (
+              <Marker
+                point={pointB}
+                source={require('./assets/images/marker.png')}
+              />
+            )}
+
+            <Polyline
+              gapLength={route.type === 'walk' ? 10 : 0}
+              dashLength={route.type === 'walk' ? 20 : 0}
+              points={route.points}
+              strokeColor={route.type === 'walk' ? '#9F67FB' : '#3CB300'}
+              strokeWidth={5}
+            />
+          </View>
+        ))}
+      </YaMap>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  mapStyle: {
+    flex: 1,
   },
 });
 
